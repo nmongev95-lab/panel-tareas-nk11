@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NK11 · Panel de tareas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Archivo',system-ui,-apple-system,sans-serif;background:#f3f4f6;color:#171717;padding:14px}
+  .wrap{max-width:1000px;margin:0 auto}
+  button{font:inherit;cursor:pointer}
+  input{font:inherit}
+  button:focus-visible,input:focus-visible{outline:2px solid #171717;outline-offset:2px}
+  [hidden]{display:none !important}
+
+  /* ── Encabezado ── */
+  header{border-bottom:4px solid #171717;padding-bottom:10px;margin-bottom:12px}
+  .hrow{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  h1{font-size:24px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+  h1 .dot{color:#a3a3a3}
+  #fecha{font-size:13px;color:#737373;font-weight:500}
+  .hbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .spacer{flex:1}
+  .chip{flex:none;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px}
+  .chip.ok{background:#d1fae5;color:#047857}
+  .chip.saving{background:#e5e5e5;color:#525252}
+  .chip.err{background:#fee2e2;color:#b91c1c}
+  .chip.local{background:#fef3c7;color:#92400e}
+  .hchip{background:#fff;border:1px solid #d4d4d4;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;color:#404040}
+  .hchip:hover{border-color:#171717}
+
+  /* ── Boletín de próximas ── */
+  .ticker{background:#171717;color:#fff;border-radius:12px;padding:9px 0;overflow:hidden;margin-bottom:12px;cursor:pointer}
+  .tkin{display:inline-flex;white-space:nowrap;will-change:transform;animation:tk 30s linear infinite}
+  .ticker:hover .tkin{animation-play-state:paused}
+  .tkhalf{display:inline-flex;gap:26px;padding-right:26px;align-items:center}
+  .tki{font-size:13px;font-weight:600}
+  .tks{color:#737373}
+  @keyframes tk{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  .banner{background:#fef3c7;border:1px solid #fcd34d;color:#78350f;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.45;margin-bottom:14px}
+  .banner code{background:#fde68a;padding:1px 4px;border-radius:4px;font-size:12px}
+
+  /* ── Pestañas (pantalla chica) ── */
+  .tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .tabbtn{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 6px;border-radius:12px;border:2px solid;font-weight:700;font-size:14px;background:#fff}
+  #tab-daily{border-color:#bae6fd;color:#075985}
+  #tab-daily.active{background:#0369a1;border-color:#0369a1;color:#fff}
+  #tab-monthly{border-color:#fde68a;color:#92400e}
+  #tab-monthly.active{background:#d97706;border-color:#d97706;color:#fff}
+  .tabbtn .tc{font-size:12px;font-weight:600;opacity:.8}
+
+  /* ── Paneles ── */
+  main section{margin-bottom:16px}
+  .panel{background:#fff;border:1px solid #e5e5e5;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .panel.daily{--c:#0284c7;--chead:#0369a1;--cdark:#075985;--cpill:#0c4a6e;--csoft:#e0f2fe;--ctext:#075985;--cbtn:#075985;--cbtnh:#0c4a6e}
+  .panel.monthly{--c:#f59e0b;--chead:#d97706;--cdark:#b45309;--cpill:#92400e;--csoft:#fef3c7;--ctext:#92400e;--cbtn:#b45309;--cbtnh:#92400e}
+
+  .phead{display:flex;align-items:center;gap:8px;padding:12px;background:var(--chead);color:#fff;flex-wrap:wrap}
+  .ptitle{font-weight:700;text-transform:uppercase;letter-spacing:.12em;font-size:13px}
+  .pcount{background:var(--cpill);color:#fff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px}
+  .hbtn{background:var(--cbtn);color:#fff;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600}
+  .hbtn:hover{background:var(--cbtnh)}
+  .hbtn.warn{background:#fff;color:#dc2626}
+  .hbtn.active{background:#fff;color:var(--ctext)}
+
+  .pbarwrap{height:6px;background:#f0f0f0}
+  .pbar{height:100%;width:0%;background:var(--c);transition:width .3s}
+  .ptools{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #f5f5f5}
+  .tgl{background:#fff;border:1px solid #d4d4d4;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600;color:#525252}
+  .tgl.on{background:var(--csoft);border-color:var(--c);color:var(--ctext)}
+  .pfaces{font-size:15px;letter-spacing:2px}
+
+  .plist{padding:12px;display:flex;flex-direction:column;gap:6px}
+
+  .task{display:flex;align-items:flex-start;gap:10px;text-align:left;width:100%;padding:10px 12px;border-radius:12px;border:1px solid #e5e5e5;background:#fff;font-size:14px;line-height:1.35;color:#262626;transition:background .12s,border-color .12s}
+  .task:not(.done):hover{border-color:var(--c);background:var(--csoft)}
+  .task.done{background:var(--c);border-color:var(--c);color:#fff}
+  .task.done .txt{text-decoration:line-through}
+  .task.late{border-color:#ef4444;border-left:4px solid #ef4444;background:#fef2f2}
+  .tbody{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+  .txt{overflow-wrap:anywhere}
+  .tnote{font-size:12px;color:#737373;font-style:italic}
+  .task.done .tnote{color:#f5f5f5}
+  .tby{font-size:11px;font-weight:600;color:#a3a3a3}
+  .task.done .tby{color:#f5f5f5}
+  .box{width:20px;height:20px;flex:none;border-radius:6px;border:2px solid #d4d4d4;display:flex;align-items:center;justify-content:center;margin-top:1px;color:var(--c)}
+  .task.done .box{background:#fff;border-color:#fff}
+  .task:not(.done) .box svg{display:none}
+  .badge{flex:none;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--csoft);color:var(--ctext);white-space:nowrap}
+  .task.done .badge{background:var(--cpill);color:#fff}
+  .task.late .badge{background:#fee2e2;color:#b91c1c}
+
+  .divrow{display:flex;align-items:center;gap:8px;padding:10px 0 2px}
+  .line{height:1px;background:#e5e5e5;flex:1}
+  .dlab{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#a3a3a3}
+
+  /* fila en modo edición */
+  .erow{display:flex;flex-direction:column;gap:6px;padding:8px 12px;border:1px dashed #d4d4d4;border-radius:12px;background:#fafafa;font-size:14px;color:#404040}
+  .erow1{display:flex;align-items:center;gap:8px}
+  .etxt{flex:1;line-height:1.35;overflow-wrap:anywhere}
+  .erow2{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .mv{border:1px solid #d4d4d4;background:#fff;border-radius:8px;width:32px;height:30px;font-size:14px;line-height:1;color:#404040}
+  .mv:hover{border-color:#171717}
+  .rng{width:52px;padding:4px;border:1px solid #d4d4d4;border-radius:6px;text-align:center;font-size:12px;background:#fff}
+  .rsep{color:#a3a3a3}
+  .htime{padding:4px 6px;border:1px solid #d4d4d4;border-radius:6px;font-size:12px;background:#fff}
+  .nbtn{border:1px solid #d4d4d4;background:#fff;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600;color:#404040}
+  .nbtn:hover{border-color:#171717}
+  .del{border:1px solid #fecaca;background:#fef2f2;color:#dc2626;border-radius:8px;width:30px;height:30px;flex:none;font-size:14px;line-height:1}
+  .del:hover{background:#fee2e2}
+  .del.deldiv{width:24px;height:24px;border:none;background:transparent}
+
+  .padd{border-top:1px solid #f5f5f5;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .tin{width:100%;padding:9px 12px;border:1px solid #d4d4d4;border-radius:12px;font-size:14px;background:#fff}
+  .addrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .nin{width:76px;padding:8px;border:1px solid #d4d4d4;border-radius:12px;font-size:14px;text-align:center;background:#fff}
+  .hin{width:auto}
+  .addbtn{margin-left:auto;background:var(--chead);color:#fff;border:none;border-radius:12px;padding:9px 14px;font-size:14px;font-weight:600}
+  .addbtn:hover{background:var(--cdark)}
+  .hint{font-size:11px;color:#a3a3a3}
+  .foot{text-align:center;font-size:12px;color:#a3a3a3;margin:6px 0 20px}
+  .foot a{color:#737373;cursor:pointer;text-decoration:underline}
+
+  /* ── Acceso ── */
+  #login{position:fixed;inset:0;background:#f3f4f6;display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .lcard{background:#fff;border:1px solid #e5e5e5;border-radius:16px;padding:24px;width:100%;max-width:360px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;gap:10px}
+  .lcard h2{font-size:22px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-bottom:4px solid #171717;padding-bottom:8px}
+  .lsub{font-size:13px;color:#737373}
+  .lbtn{background:#171717;color:#fff;border:none;border-radius:12px;padding:10px;font-size:14px;font-weight:700}
+  .lbtn:hover{background:#404040}
+  .lerr{color:#b91c1c;font-size:13px;font-weight:600}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chipbtn{border:2px solid #d4d4d4;background:#fff;border-radius:999px;padding:8px 14px;font-weight:700;font-size:14px}
+  .chipbtn:hover{border-color:#171717}
+
+  /* ── Modal de próximas ── */
+  .modal{position:fixed;inset:0;background:rgba(23,23,23,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:60}
+  .mcard{background:#fff;border-radius:16px;width:100%;max-width:420px;max-height:80vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+  .mhead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:4px solid #171717}
+  .mhead h3{font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+  .mclose{border:none;background:#f5f5f5;border-radius:8px;width:30px;height:30px;font-size:14px}
+  .mbody{padding:12px 16px 16px;display:flex;flex-direction:column;gap:6px}
+  .mgrp{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#a3a3a3;margin-top:8px}
+  .mgrp.rojo{color:#b91c1c}
+  .mitem{font-size:14px;line-height:1.4;padding:6px 0;border-bottom:1px solid #f5f5f5}
+
+  /* ── Celebración ── */
+  .fly{position:fixed;font-size:26px;pointer-events:none;z-index:80;animation:flyup 1s ease-out forwards}
+  @keyframes flyup{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-70px) scale(1.5)}}
+  #party{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:70;pointer-events:none}
+  .pmsg{background:#171717;color:#fff;padding:16px 24px;border-radius:16px;font-weight:800;font-size:18px;box-shadow:0 10px 30px rgba(0,0,0,.3);animation:pop .3s ease-out}
+  @keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+
+  @media(min-width:768px){
+    body{padding:24px}
+    h1{font-size:30px}
+    .tabs{display:none}
+    main{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+    main section{margin-bottom:0}
+  }
+  @media(max-width:767px){
+    body[data-tab="daily"] #sec-monthly{display:none}
+    body[data-tab="monthly"] #sec-daily{display:none}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .tkin{animation:none !important}
+    .ticker{overflow-x:auto}
+    .fly{display:none}
+    .pmsg{animation:none}
+  }
+</style>
+</head>
+<body data-tab="daily">
+
+<div id="login" hidden>
+  <div class="lcard">
+    <h2>NK11</h2>
+    <div id="lstep1">
+      <p class="lsub" style="margin-bottom:10px">Panel de tareas · acceso del equipo</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <input class="tin" id="lg-user" placeholder="Usuario" autocomplete="username" autocapitalize="none">
+        <input class="tin" id="lg-pass" type="password" placeholder="Clave" autocomplete="current-password">
+        <p class="lerr" id="lg-err" hidden>Usuario o clave incorrectos.</p>
+        <button class="lbtn" id="lg-btn">Entrar</button>
+      </div>
+    </div>
+    <div id="lstep2" hidden>
+      <p class="lsub" style="margin-bottom:10px">¿Quién eres? Toca tu nombre o regístralo.</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="chips" id="nickchips"></div>
+        <input class="tin" id="lg-nick" placeholder="Escribe tu nombre (si no aparece)" maxlength="16">
+        <p class="lerr" id="nk-err" hidden></p>
+        <button class="lbtn" id="nk-btn">Continuar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <header>
+    <div class="hrow">
+      <h1>NK11 <span class="dot">·</span> Panel de tareas</h1>
+      <span id="status" class="chip saving">Cargando…</span>
+    </div>
+    <div class="hbar">
+      <p id="fecha"></p>
+      <span class="spacer"></span>
+      <button class="hchip" id="btn-notas">📝 Notas: sí</button>
+      <button class="hchip" id="btn-prox">📋 Próximas</button>
+    </div>
+  </header>
+
+  <div id="ticker" class="ticker" hidden title="Tocar para ver el detalle">
+    <div class="tkin" id="tkin"></div>
+  </div>
+
+  <div id="banner" class="banner" hidden>
+    <b>Falta conectar la base de datos.</b> Abre <code>index.html</code> y pega la URL de tu
+    Realtime Database en la línea marcada. Mientras tanto, esta vista funciona solo en este
+    dispositivo y <b>no guarda cambios</b>.
+  </div>
+
+  <div class="tabs">
+    <button id="tab-daily" class="tabbtn active" onclick="setTab('daily')">Diarias <span class="tc" id="cnt-tab-daily"></span></button>
+    <button id="tab-monthly" class="tabbtn" onclick="setTab('monthly')">Mensuales <span class="tc" id="cnt-tab-monthly"></span></button>
+  </div>
+
+  <main>
+    <section id="sec-daily">
+      <div class="panel daily">
+        <div class="phead">
+          <span class="ptitle">Tareas diarias</span>
+          <span class="pcount" id="cnt-daily">0/0</span>
+          <span class="spacer"></span>
+          <button class="hbtn" id="reset-daily">Desmarcar</button>
+          <button class="hbtn" id="edit-daily">Editar</button>
+        </div>
+        <div class="pbarwrap"><div class="pbar" id="bar-daily"></div></div>
+        <div class="ptools">
+          <button class="tgl" id="pend-daily">👁 Solo pendientes</button>
+          <span class="spacer"></span>
+          <span class="pfaces" id="face-daily"></span>
+        </div>
+        <div class="plist" id="list-daily" data-list="daily"></div>
+        <div class="padd">
+          <input class="tin" id="new-daily" placeholder="Nueva tarea diaria…">
+          <div class="addrow">
+            <input class="nin hin" id="hora-daily" type="time">
+            <button class="addbtn" onclick="addTask('daily')">＋ Agregar</button>
+          </div>
+          <p class="hint">La hora es la hora límite del día; es opcional.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-monthly">
+      <div class="panel monthly">
+        <div class="phead">
+          <span class="ptitle">Tareas mensuales</span>
+          <span class="pcount" id="cnt-monthly">0/0</span>
+          <span class="spacer"></span>
+          <button class="hbtn" id="reset-monthly">Desmarcar</button>
+          <button class="hbtn" id="edit-monthly">Editar</button>
+        </div>
+        <div class="pbarwrap"><div class="pbar" id="bar-monthly"></div></div>
+        <div class="ptools">
+          <button class="tgl" id="pend-monthly">👁 Solo pendientes</button>
+          <span class="spacer"></span>
+          <span class="pfaces" id="face-monthly"></span>
+        </div>
+        <div class="plist" id="list-monthly" data-list="monthly"></div>
+        <div class="padd">
+          <input class="tin" id="new-monthly" placeholder="Nueva tarea mensual…">
+          <div class="addrow">
+            <input class="nin" id="from-monthly" type="number" min="1" max="31" placeholder="Desde">
+            <input class="nin" id="to-monthly" type="number" min="1" max="31" placeholder="Hasta">
+            <button class="addbtn" onclick="addTask('monthly')">＋ Agregar</button>
+          </div>
+          <p class="hint">"Desde / Hasta" son días del mes (1–31); son opcionales.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <p class="foot">Lista compartida entre el equipo. Conectado como <b id="foot-nick">—</b> ·
+    <a id="chg-user">Cambiar usuario</a> · <a id="logout">Cerrar sesión</a></p>
+</div>
+
+<div id="upmodal" class="modal" hidden>
+  <div class="mcard">
+    <div class="mhead"><h3>Tareas próximas</h3><button class="mclose" id="up-close">✕</button></div>
+    <div class="mbody" id="up-body"></div>
+  </div>
+</div>
+
+<div id="party" hidden><div class="pmsg" id="party-msg"></div></div>
+
+<script>
+/* ══════════════════ CONFIGURACIÓN ══════════════════
+   1) URL de la Realtime Database de Firebase.
+   2) Usuario y clave de acceso: edita las dos líneas
+      y vuelve a subir el archivo al repositorio.
+      Al cambiarlas, todos deben iniciar sesión de nuevo.
+   ════════════════════════════════════════════════════ */
+const DB_URL   = "https://nk11-tareas-default-rtdb.firebaseio.com";
+const APP_USER = "626";
+const APP_PASS = "local";
+const UPCOMING_DAYS = 7;   // horizonte del boletín de próximas (días)
+
+const ROOT = "nk11";
+const configured = /^https:\/\//.test(DB_URL);
+const base = DB_URL.replace(/\/+$/, "") + "/" + ROOT;
+
+/* ── Acceso a Firebase por REST ── */
+async function fbGet(p){ const r = await fetch(base + p + ".json"); if(!r.ok) throw new Error("get"); return r.json(); }
+async function fbPut(p, v){ const r = await fetch(base + p + ".json", {method:"PUT", body: JSON.stringify(v)}); if(!r.ok) throw new Error("put"); }
+async function fbPatch(p, v){ const r = await fetch(base + p + ".json", {method:"PATCH", body: JSON.stringify(v)}); if(!r.ok) throw new Error("patch"); }
+async function fbDel(p){ const r = await fetch(base + p + ".json", {method:"DELETE"}); if(!r.ok) throw new Error("del"); }
+
+/* ── Utilidades ── */
+let _c = 0;
+const uid = () => "t" + Date.now().toString(36) + (_c++).toString(36) + Math.random().toString(36).slice(2,6);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clamp = raw => { const n = parseInt(raw,10); return Number.isFinite(n) ? Math.min(31, Math.max(1, n)) : null; };
+const $ = id => document.getElementById(id);
+const pad = n => (n < 10 ? "0" : "") + n;
+const nowHM = () => { const n = new Date(); return pad(n.getHours()) + ":" + pad(n.getMinutes()); };
+const fmtAt = ts => {
+  const d = new Date(ts), n = new Date();
+  const hm = pad(d.getHours()) + ":" + pad(d.getMinutes());
+  return d.toDateString() === n.toDateString() ? hm : d.getDate() + "/" + (d.getMonth()+1) + " " + hm;
+};
+const CHECK = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+/* ── Tareas iniciales (se cargan a la base la primera vez) ── */
+const SEED_DAILY = [
+  "Temperaturas AM",
+  "Separar documentos del día anterior",
+  "Ingresar venta en página Reesbee",
+  "Planilla Prosegur",
+  "Revisar tablero productividad CERCA",
+  "Revisar NPS",
+  "Publicar avance concursos pizarra",
+  "Arqueo de valores",
+  "Realizar Takary brecha (lunes)",
+  {div:"Mercadería · M, M, V y sábado"},
+  "Recepcionar pedido y cooler",
+  "Revisar bandejas y cooler",
+  "Ver data logger en página Logmore",
+  "Takary data logger",
+  "Revisar estado del pedido en ERP",
+  "Recepción magistrales",
+  "Ingresar cód. autorización",
+  "Guía controlados Takary (miérc. y viernes)",
+  "Ingresar guía controlados al Excel",
+  {div:"Otras tareas"},
+  "Teamcore (lunes a viernes, 12:00–16:00)",
+  "Inventarios Brec-Sel-Dermo (05 al 26)",
+  "Pago de sencillo (plazo hasta el jueves)",
+  "Solicitud de sencillo (viernes a domingo)",
+  "Envío recetas magistrales",
+  "Revisar Picasso",
+  "Revisar consolidador de comunicados",
+  "Guías bandejas / cooler",
+  "Memos sobre stock (fin de mes)",
+  "Memos canje (principio de mes)",
+  "Revisar venta perdida",
+  "Temperaturas PM",
+  "Stock negativo: < 0",
+  "Localizador canjes: ≠ 0"
+];
+const SEED_MONTHLY = [
+  "Toma de conocimientos (firman los chicos y se archiva en carpeta)",
+  "Imprimir planillas de temperaturas",
+  "Publicar turnos de salud",
+  "Archivar sobres del mes y foliar recetas",
+  "Imprimir y publicar precios del mes (Cenabast, bioequivalentes, etc.)",
+  "Publicar horarios en Breik",
+  "Rendir gastos",
+  "Imprimir dossier y archivar en carpeta del público",
+  "Imprimir certificado de Ingequímica (llega al correo)",
+  "Subir planilla de controlados a la plataforma Minsal",
+  {t:"Pedido de adquisiciones", from:1, to:10},
+  {t:"Pedido de adquisiciones especial", from:1, to:10},
+  "Pedido de adquisiciones: precios amarillos y sobres data logger",
+  "Asignación de canjes, subir a la plataforma Takary",
+  "Actualizar planogramas",
+  "Emitir pacto de horas extras (cada 3 meses)",
+  "Imprimir concursos del mes",
+  {t:"Takary Sanitario", from:1, to:16},
+  "Takary Salcodays",
+  "Takary peinetas OTC",
+  "Takary precios del mes",
+  "Takary Cenabast",
+  "Takary genéricos",
+  "Takary bioequivalentes",
+  "Revisar Cenabast y cambiar precios",
+  "Enviar valija",
+  "Asignar PIN a los chicos",
+  "Ver tema de 7 domingos adicionales",
+  "Retirar caja chica autorizada",
+  "Ver correo vencimiento locales (los martes)",
+  {t:"Ver Reporte Seguimiento Ajustes de Inventario", from:26},
+  "Ver correo Panel seguimiento M y V (Carlos González)",
+  "Revisar consolidador de comunicados",
+  "Solicitar papeletas de depósito al correo tesorería"
+];
+
+function buildList(defs){
+  const o = {};
+  defs.forEach((e, i) => {
+    const id = uid();
+    const it = { order: (i + 1) * 10 };
+    if (typeof e === "string") { it.text = e; it.done = false; }
+    else if (e.div) { it.text = e.div; it.divider = true; }
+    else {
+      it.text = e.t; it.done = false;
+      if (e.from != null) it.from = e.from;
+      if (e.to != null) it.to = e.to;
+    }
+    o[id] = it;
+  });
+  return o;
+}
+const seedState = () => ({ daily: buildList(SEED_DAILY), monthly: buildList(SEED_MONTHLY) });
+const normalize = d => ({ daily: (d && d.daily) || {}, monthly: (d && d.monthly) || {} });
+
+/* ── Estado ── */
+let state = { daily: {}, monthly: {} };
+let lastRemote = "";
+let statusState = "saving";
+let nick = null;
+let showNotes = true;
+const editMode = { daily: false, monthly: false };
+const soloPend = { daily: false, monthly: false };
+const confirmReset = { daily: false, monthly: false };
+const resetTimers = {};
+const wasFull = { daily: false, monthly: false };
+let USERS = {};
+
+function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function lsSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+function lsDel(k){ try { localStorage.removeItem(k); } catch(e){} }
+
+function setStatus(s){
+  statusState = s;
+  const el = $("status");
+  const map = {
+    ok:     ["ok", "Guardado"],
+    saving: ["saving", "Guardando…"],
+    err:    ["err", "Sin conexión"],
+    local:  ["local", "Sin base de datos"]
+  };
+  const m = map[s] || map.ok;
+  el.className = "chip " + m[0];
+  el.textContent = m[1];
+}
+function save(promise){
+  if (!configured) return;
+  setStatus("saving");
+  promise.then(() => setStatus("ok")).catch(() => setStatus("err"));
+}
+
+/* ── Acceso: clave + nickname ── */
+const SESSION_KEY = "nk11_sesion";
+const NICK_KEY = "nk11_nick";
+const sessionToken = () => APP_USER + "|" + APP_PASS;
+let appStarted = false;
+
+const nkey = s => {
+  const k = s.toLowerCase().replace(/[.#$\/\[\]\s]+/g, "_").replace(/^_+|_+$/g, "");
+  return k || "u" + Date.now().toString(36);
+};
+
+function tryLogin(){
+  const u = $("lg-user").value.trim();
+  const p = $("lg-pass").value.trim();
+  if (u === APP_USER && p === APP_PASS) {
+    lsSet(SESSION_KEY, sessionToken());
+    $("lg-err").hidden = true;
+    showNickStep();
+  } else {
+    $("lg-err").hidden = false;
+    $("lg-pass").value = "";
+  }
+}
+async function showNickStep(){
+  $("login").hidden = false;
+  $("lstep1").hidden = true;
+  $("lstep2").hidden = false;
+  USERS = {};
+  if (configured) { try { USERS = (await fbGet("/users")) || {}; } catch(e){} }
+  renderChips();
+  $("lg-nick").focus();
+}
+function renderChips(){
+  const names = Object.values(USERS);
+  $("nickchips").innerHTML = names.length
+    ? names.map(n => '<button class="chipbtn" data-nick="' + esc(n) + '">' + esc(n) + '</button>').join("")
+    : '<span class="lsub">Aún no hay nombres registrados: serás el primero.</span>';
+}
+function chooseNick(name, existing){
+  nick = name;
+  lsSet(NICK_KEY, name);
+  if (!existing && configured) {
+    USERS[nkey(name)] = name;
+    save(fbPut("/users/" + nkey(name), name));
+  }
+  $("login").hidden = true;
+  $("foot-nick").textContent = nick;
+  startApp();
+}
+function tryRegisterNick(){
+  const v = $("lg-nick").value.trim();
+  const err = $("nk-err");
+  if (!v) { err.textContent = "Escribe un nombre."; err.hidden = false; return; }
+  const k = nkey(v);
+  if (USERS[k]) {
+    err.textContent = '"' + USERS[k] + '" ya está registrado. Si eres tú, toca tu nombre arriba.';
+    err.hidden = false;
+    return;
+  }
+  err.hidden = true;
+  chooseNick(v, false);
+}
+function changeUser(){ lsDel(NICK_KEY); location.reload(); }
+function logout(){ lsDel(SESSION_KEY); lsDel(NICK_KEY); location.reload(); }
+
+function startApp(){
+  if (appStarted) return;
+  appStarted = true;
+  $("foot-nick").textContent = nick || "—";
+  load();
+  setInterval(poll, 12000);      // cambios de otras personas
+  setInterval(minuteTick, 60000); // refresca vencidas y boletín
+}
+
+/* ── Fechas y vencimientos ── */
+function monthlyInfo(it){
+  if (it.from == null && it.to == null) return null;
+  const lo = it.from != null ? it.from : it.to;
+  const hi = it.to != null ? it.to : it.from;
+  const n = new Date(), d = n.getDate();
+  const dim = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
+  if (d < lo)  return { phase: "pre",  days: lo - d, lo: lo, hi: hi };
+  if (d > hi)  return { phase: "past", days: (dim - d) + lo, lo: lo, hi: hi };
+  return { phase: "in", left: hi - d, lo: lo, hi: hi };
+}
+function isLate(list, it){
+  if (it.divider || it.done) return false;
+  if (list === "daily") return !!(it.hora && nowHM() > it.hora);
+  const info = monthlyInfo(it);
+  return !!(info && (info.phase === "past" || (info.phase === "in" && info.left === 0)));
+}
+
+/* ── Boletín de próximas ── */
+function upcomingItems(){
+  const out = [];
+  const nowS = nowHM();
+  sorted("daily").forEach(it => {
+    if (it.divider || it.done || !it.hora) return;
+    if (it.hora >= nowS) out.push({ p: 1, s: it.hora, html: "⏰ Hoy " + it.hora + " — " + esc(it.text), grp: "hoy" });
+    else out.push({ p: 0, s: it.hora, html: "⚠ Venció " + it.hora + " — " + esc(it.text), grp: "venc" });
+  });
+  sorted("monthly").forEach(it => {
+    if (it.divider || it.done) return;
+    const info = monthlyInfo(it);
+    if (!info) return;
+    const rng = " (" + info.lo + (info.hi !== info.lo ? "–" + info.hi : "") + ")";
+    if (info.phase === "past") {
+      out.push({ p: 0, s: "z" + pad(info.hi), html: "⚠ Venció el " + info.hi + " — " + esc(it.text) + rng, grp: "venc" });
+    } else if (info.phase === "in") {
+      if (info.left === 0) out.push({ p: 1, s: "00:00", html: "📅 Hoy último día — " + esc(it.text) + rng, grp: "hoy" });
+      else out.push({ p: 2, s: pad(info.left), html: "📅 En curso, hasta el " + info.hi + " — " + esc(it.text) + rng, grp: "prox" });
+    } else if (info.days <= UPCOMING_DAYS) {
+      out.push({ p: 2, s: "9" + pad(info.days), html: "📅 " + (info.days === 1 ? "Mañana" : "En " + info.days + " días") + " — " + esc(it.text) + rng, grp: "prox" });
+    }
+  });
+  out.sort((a, b) => (a.p - b.p) || (a.s < b.s ? -1 : 1));
+  return out;
+}
+function renderTicker(){
+  const items = upcomingItems();
+  const tk = $("ticker");
+  if (!items.length) { tk.hidden = true; return; }
+  tk.hidden = false;
+  const half = items.map(i => '<span class="tki">' + i.html + '</span>').join('<span class="tks">•</span>');
+  $("tkin").innerHTML = '<span class="tkhalf">' + half + '</span><span class="tkhalf">' + half + '</span>';
+  $("tkin").style.animationDuration = Math.min(90, 12 + items.length * 5) + "s";
+}
+function openModal(){
+  const items = upcomingItems();
+  const grp = (g, titulo, cls) => {
+    const rows = items.filter(i => i.grp === g);
+    if (!rows.length) return "";
+    return '<p class="mgrp ' + (cls || "") + '">' + titulo + '</p>'
+      + rows.map(i => '<div class="mitem">' + i.html + '</div>').join("");
+  };
+  const html = grp("venc", "Vencidas", "rojo") + grp("hoy", "Para hoy") + grp("prox", "Próximos " + UPCOMING_DAYS + " días");
+  $("up-body").innerHTML = html || '<div class="mitem">Nada pendiente próximo. 👌</div>';
+  $("upmodal").hidden = false;
+}
+
+/* ── Render de paneles ── */
+const sorted = list => Object.entries(state[list])
+  .map(([id, v]) => Object.assign({ id: id }, v))
+  .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+function badgeHtml(list, it, late){
+  if (list === "daily") {
+    if (!it.hora) return "";
+    return '<span class="badge">' + (late ? "⚠ " : "⏰ ") + it.hora + '</span>';
+  }
+  if (it.from == null && it.to == null) return "";
+  const label = (it.from != null && it.to != null)
+    ? "del " + it.from + " al " + it.to
+    : "día " + (it.from != null ? it.from : it.to);
+  return '<span class="badge">' + (late ? "⚠ " : "📅 ") + label + '</span>';
+}
+function faces(pct){
+  if (pct >= 100) return "🤩🎉";
+  if (pct >= 80) return "🙂😊😄😁";
+  if (pct >= 60) return "🙂😊😄";
+  if (pct >= 40) return "🙂😊";
+  if (pct >= 20) return "🙂";
+  return "";
+}
+
+function renderPanel(list){
+  const c = $("list-" + list);
+  const all = sorted(list);
+  const edit = editMode[list];
+  const items = (!edit && soloPend[list]) ? all.filter(i => i.divider || !i.done) : all;
+
+  c.innerHTML = items.map(it => {
+    if (it.divider) {
+      return '<div class="divrow"><span class="line"></span><span class="dlab">' + esc(it.text) + '</span>'
+        + (edit
+          ? '<button class="mv" data-act="up" data-id="' + it.id + '" aria-label="Subir">↑</button>'
+            + '<button class="mv" data-act="down" data-id="' + it.id + '" aria-label="Bajar">↓</button>'
+            + '<button class="del deldiv" data-act="del" data-id="' + it.id + '" aria-label="Eliminar separador">✕</button>'
+          : '')
+        + '<span class="line"></span></div>';
+    }
+    if (edit) {
+      let ctl = '<button class="mv" data-act="up" data-id="' + it.id + '" aria-label="Subir">↑</button>'
+        + '<button class="mv" data-act="down" data-id="' + it.id + '" aria-label="Bajar">↓</button>';
+      if (list === "monthly") {
+        ctl += '<input class="rng" type="number" min="1" max="31" placeholder="de" data-id="' + it.id + '" data-field="from" value="' + (it.from != null ? it.from : "") + '">'
+          + '<span class="rsep">–</span>'
+          + '<input class="rng" type="number" min="1" max="31" placeholder="a" data-id="' + it.id + '" data-field="to" value="' + (it.to != null ? it.to : "") + '">';
+      } else {
+        ctl += '<input class="htime" type="time" data-id="' + it.id + '" value="' + (it.hora || "") + '">';
+      }
+      ctl += '<button class="nbtn" data-act="note" data-id="' + it.id + '">📝 Nota</button>';
+      return '<div class="erow"><div class="erow1"><span class="etxt">' + esc(it.text) + '</span>'
+        + '<button class="del" data-act="del" data-id="' + it.id + '" aria-label="Eliminar tarea">✕</button></div>'
+        + '<div class="erow2">' + ctl + '</div></div>';
+    }
+    const late = isLate(list, it);
+    let body = '<span class="txt">' + esc(it.text) + '</span>';
+    if (showNotes && it.note) body += '<span class="tnote">📝 ' + esc(it.note) + '</span>';
+    if (it.done && it.by) body += '<span class="tby">✓ ' + fmtAt(it.at || Date.now()) + ' · ' + esc(it.by) + '</span>';
+    return '<button class="task' + (it.done ? ' done' : '') + (late ? ' late' : '') + '" data-act="toggle" data-id="' + it.id + '">'
+      + '<span class="box">' + CHECK + '</span>'
+      + '<span class="tbody">' + body + '</span>'
+      + badgeHtml(list, it, late)
+      + '</button>';
+  }).join("");
+
+  const t = all.filter(i => !i.divider);
+  const dn = t.filter(i => i.done).length;
+  const pct = t.length ? Math.round(dn * 100 / t.length) : 0;
+  $("cnt-" + list).textContent = dn + "/" + t.length;
+  $("cnt-tab-" + list).textContent = dn + "/" + t.length;
+  $("bar-" + list).style.width = pct + "%";
+  $("face-" + list).textContent = faces(pct);
+
+  const eb = $("edit-" + list);
+  eb.textContent = edit ? "Listo" : "Editar";
+  eb.classList.toggle("active", edit);
+  const rb = $("reset-" + list);
+  rb.textContent = confirmReset[list] ? "¿Confirmar?" : "Desmarcar";
+  rb.classList.toggle("warn", confirmReset[list]);
+  const pb = $("pend-" + list);
+  pb.classList.toggle("on", soloPend[list]);
+  pb.textContent = (soloPend[list] ? "✓ " : "👁 ") + "Solo pendientes";
+}
+const renderAll = () => { renderPanel("daily"); renderPanel("monthly"); renderTicker(); };
+
+/* ── Celebración ── */
+const HAPPY = ["😊", "😄", "😁", "🥳", "🙌"];
+function flyEmoji(x, y){
+  const s = document.createElement("span");
+  s.className = "fly";
+  s.textContent = HAPPY[Math.floor(Math.random() * HAPPY.length)];
+  s.style.left = (x - 13) + "px";
+  s.style.top = (y - 13) + "px";
+  document.body.appendChild(s);
+  setTimeout(() => s.remove(), 1000);
+}
+function celebrate(list){
+  const msg = list === "daily" ? "¡Diarias al 100%! 🥳" : "¡Mensuales al 100%! 🥳";
+  $("party-msg").textContent = msg;
+  $("party").hidden = false;
+  for (let i = 0; i < 10; i++) {
+    setTimeout(() => flyEmoji(30 + Math.random() * (window.innerWidth - 60), 120 + Math.random() * (window.innerHeight - 200)), i * 70);
+  }
+  setTimeout(() => { $("party").hidden = true; }, 2600);
+}
+
+/* ── Acciones ── */
+function toggleTask(list, id, ev){
+  const it = state[list][id];
+  if (!it || it.divider) return;
+  it.done = !it.done;
+  let upd;
+  if (it.done) {
+    it.by = nick || "?";
+    it.at = Date.now();
+    upd = { done: true, by: it.by, at: it.at };
+    if (ev) flyEmoji(ev.clientX || 40, ev.clientY || 200);
+  } else {
+    delete it.by; delete it.at;
+    upd = { done: false, by: null, at: null };
+  }
+  renderPanel(list);
+  renderTicker();
+  save(fbPatch("/" + list + "/" + id, upd));
+  const t = sorted(list).filter(i => !i.divider);
+  const full = t.length > 0 && t.every(i => i.done);
+  if (full && !wasFull[list]) celebrate(list);
+  wasFull[list] = full;
+}
+function delTask(list, id){
+  const it = state[list][id];
+  if (!it) return;
+  if (!window.confirm('¿Borrar "' + it.text + '"? Esto lo verán todos y no se puede deshacer.')) return;
+  delete state[list][id];
+  renderPanel(list);
+  renderTicker();
+  save(fbDel("/" + list + "/" + id));
+}
+function moveItem(list, id, dir){
+  const arr = sorted(list);
+  const i = arr.findIndex(x => x.id === id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= arr.length) return;
+  const a = arr[i], b = arr[j];
+  const oa = a.order || 0, ob = b.order || 0;
+  state[list][a.id].order = ob;
+  state[list][b.id].order = oa;
+  renderPanel(list);
+  const upd = {};
+  upd[a.id + "/order"] = ob;
+  upd[b.id + "/order"] = oa;
+  save(fbPatch("/" + list, upd));
+}
+function editNote(list, id){
+  const it = state[list][id];
+  if (!it) return;
+  const v = window.prompt('Nota para "' + it.text + '" (deja vacío para borrarla):', it.note || "");
+  if (v === null) return;
+  const t = v.trim();
+  if (t) { it.note = t; save(fbPut("/" + list + "/" + id + "/note", t)); }
+  else { delete it.note; save(fbDel("/" + list + "/" + id + "/note")); }
+  renderPanel(list);
+}
+function addTask(list){
+  const inp = $("new-" + list);
+  const text = inp.value.trim();
+  if (!text) return;
+  const orders = Object.values(state[list]).map(x => x.order || 0);
+  const it = { text: text, done: false, order: (orders.length ? Math.max.apply(null, orders) : 0) + 10 };
+  if (list === "monthly") {
+    const f = clamp($("from-monthly").value);
+    const t = clamp($("to-monthly").value);
+    if (f != null) it.from = f;
+    if (t != null) it.to = t;
+    $("from-monthly").value = "";
+    $("to-monthly").value = "";
+  } else {
+    const h = $("hora-daily").value;
+    if (h) it.hora = h;
+    $("hora-daily").value = "";
+  }
+  const id = uid();
+  state[list][id] = it;
+  inp.value = "";
+  renderPanel(list);
+  renderTicker();
+  save(fbPut("/" + list + "/" + id, it));
+}
+function setRange(id, field, raw, el){
+  const it = state.monthly[id];
+  if (!it) return;
+  const n = raw === "" ? null : clamp(raw);
+  if (n == null) { delete it[field]; save(fbDel("/monthly/" + id + "/" + field)); }
+  else { it[field] = n; save(fbPut("/monthly/" + id + "/" + field, n)); }
+  if (el) el.value = (n == null ? "" : n);
+  renderTicker();
+}
+function setHora(id, raw){
+  const it = state.daily[id];
+  if (!it) return;
+  if (raw) { it.hora = raw; save(fbPut("/daily/" + id + "/hora", raw)); }
+  else { delete it.hora; save(fbDel("/daily/" + id + "/hora")); }
+  renderTicker();
+}
+function handleReset(list){
+  if (!confirmReset[list]) {
+    confirmReset[list] = true;
+    renderPanel(list);
+    clearTimeout(resetTimers[list]);
+    resetTimers[list] = setTimeout(() => { confirmReset[list] = false; renderPanel(list); }, 3500);
+    return;
+  }
+  clearTimeout(resetTimers[list]);
+  confirmReset[list] = false;
+  const upd = {};
+  Object.entries(state[list]).forEach(([id, it]) => {
+    if (!it.divider && it.done) {
+      it.done = false;
+      delete it.by; delete it.at;
+      upd[id + "/done"] = false;
+      upd[id + "/by"] = null;
+      upd[id + "/at"] = null;
+    }
+  });
+  wasFull[list] = false;
+  renderPanel(list);
+  renderTicker();
+  if (Object.keys(upd).length) save(fbPatch("/" + list, upd));
+}
+function setTab(l){
+  document.body.dataset.tab = l;
+  $("tab-daily").classList.toggle("active", l === "daily");
+  $("tab-monthly").classList.toggle("active", l === "monthly");
+}
+
+/* ── Carga inicial y sincronización ── */
+async function load(){
+  if (!configured) {
+    state = seedState();
+    setStatus("local");
+    $("banner").hidden = false;
+    renderAll();
+    return;
+  }
+  try {
+    const data = await fbGet("");
+    if (data && data.daily) {
+      state = normalize(data);
+      lastRemote = JSON.stringify(data);
+    } else {
+      state = seedState();                        // primera vez: sembrar la base
+      await fbPatch("", state);                   // PATCH para no pisar /users
+      lastRemote = "";
+    }
+    setStatus("ok");
+  } catch (e) {
+    state = seedState();
+    setStatus("err");
+  }
+  ["daily", "monthly"].forEach(l => {
+    const t = sorted(l).filter(i => !i.divider);
+    wasFull[l] = t.length > 0 && t.every(i => i.done);
+  });
+  renderAll();
+}
+function uiBusy(){
+  if (editMode.daily || editMode.monthly) return true;
+  const a = document.activeElement;
+  return !!(a && a.tagName === "INPUT");
+}
+async function poll(){
+  if (!configured || uiBusy()) return;
+  try {
+    const data = await fbGet("");
+    const s = JSON.stringify(data);
+    if (s !== lastRemote) {
+      lastRemote = s;
+      state = normalize(data);
+      renderAll();
+    }
+    if (statusState === "err") setStatus("ok");
+  } catch (e) {
+    setStatus("err");
+  }
+}
+function minuteTick(){
+  if (uiBusy()) return;
+  renderAll();   // refresca vencidas, boletín y horas mostradas
+}
+
+/* ── Arranque ── */
+(function init(){
+  let f = new Date().toLocaleDateString("es-CL", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+  $("fecha").textContent = f.charAt(0).toUpperCase() + f.slice(1);
+
+  showNotes = lsGet("nk11_notas") !== "no";
+  soloPend.daily = lsGet("nk11_pend_daily") === "si";
+  soloPend.monthly = lsGet("nk11_pend_monthly") === "si";
+  $("btn-notas").textContent = "📝 Notas: " + (showNotes ? "sí" : "no");
+
+  ["daily", "monthly"].forEach(list => {
+    const c = $("list-" + list);
+    c.addEventListener("click", e => {
+      const b = e.target.closest("[data-act]");
+      if (!b) return;
+      const act = b.dataset.act, id = b.dataset.id;
+      if (act === "toggle") toggleTask(list, id, e);
+      else if (act === "del") delTask(list, id);
+      else if (act === "up") moveItem(list, id, -1);
+      else if (act === "down") moveItem(list, id, +1);
+      else if (act === "note") editNote(list, id);
+    });
+    c.addEventListener("change", e => {
+      if (e.target.classList.contains("rng")) setRange(e.target.dataset.id, e.target.dataset.field, e.target.value, e.target);
+      else if (e.target.classList.contains("htime")) setHora(e.target.dataset.id, e.target.value);
+    });
+    $("edit-" + list).addEventListener("click", () => { editMode[list] = !editMode[list]; renderPanel(list); });
+    $("reset-" + list).addEventListener("click", () => handleReset(list));
+    $("pend-" + list).addEventListener("click", () => {
+      soloPend[list] = !soloPend[list];
+      lsSet("nk11_pend_" + list, soloPend[list] ? "si" : "no");
+      renderPanel(list);
+    });
+    $("new-" + list).addEventListener("keydown", e => { if (e.key === "Enter") addTask(list); });
+  });
+
+  $("btn-notas").addEventListener("click", () => {
+    showNotes = !showNotes;
+    lsSet("nk11_notas", showNotes ? "si" : "no");
+    $("btn-notas").textContent = "📝 Notas: " + (showNotes ? "sí" : "no");
+    renderAll();
+  });
+  $("btn-prox").addEventListener("click", openModal);
+  $("ticker").addEventListener("click", openModal);
+  $("up-close").addEventListener("click", () => { $("upmodal").hidden = true; });
+  $("upmodal").addEventListener("click", e => { if (e.target === $("upmodal")) $("upmodal").hidden = true; });
+
+  $("lg-btn").addEventListener("click", tryLogin);
+  ["lg-user", "lg-pass"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); }));
+  $("nk-btn").addEventListener("click", tryRegisterNick);
+  $("lg-nick").addEventListener("keydown", e => { if (e.key === "Enter") tryRegisterNick(); });
+  $("nickchips").addEventListener("click", e => {
+    const b = e.target.closest("[data-nick]");
+    if (b) chooseNick(b.dataset.nick, true);
+  });
+  $("chg-user").addEventListener("click", changeUser);
+  $("logout").addEventListener("click", logout);
+
+  const ses = lsGet(SESSION_KEY) === sessionToken();
+  nick = lsGet(NICK_KEY);
+  if (!ses) { $("login").hidden = false; $("lstep1").hidden = false; $("lstep2").hidden = true; $("lg-user").focus(); }
+  else if (!nick) { showNickStep(); }
+  else { $("foot-nick").textContent = nick; startApp(); }
+})();
+</script>
+</body>
+</html>
